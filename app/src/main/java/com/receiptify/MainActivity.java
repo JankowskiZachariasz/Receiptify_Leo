@@ -2,6 +2,7 @@ package com.receiptify;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.ReceiverCallNotAllowedException;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -9,7 +10,6 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 
 import com.getbase.floatingactionbutton.FloatingActionsMenu;
-import com.google.android.material.snackbar.Snackbar;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.http.HttpTransport;
@@ -24,15 +24,20 @@ import com.google.api.services.vision.v1.model.BatchAnnotateImagesResponse;
 import com.google.api.services.vision.v1.model.Feature;
 import com.google.api.services.vision.v1.model.Image;
 import com.google.api.services.vision.v1.model.TextAnnotation;
+import com.getbase.floatingactionbutton.FloatingActionButton;
+
+import com.receiptify.data.DBViewModel;
+import com.receiptify.data.Entities.Companies;
+import com.receiptify.data.Entities.Receipts;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.FileProvider;
+import androidx.lifecycle.ViewModelProvider;
 
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
-import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -42,6 +47,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.List;
 
 import static android.graphics.Color.argb;
 
@@ -62,6 +68,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView mImageDetails;
     private ImageView mMainImage;
 
+
+    //private ReceiptsViewModel DBreference;
+    private DBViewModel DBreference;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         CLOUD_VISION_API_KEY = getString(R.string.CLOUD_VISION_API_KEY);
@@ -69,10 +79,42 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        createFabMenu();
 
         mImageDetails = findViewById(R.id.image_details);
         mMainImage = findViewById(R.id.main_image);
-        createFabMenu();
+
+        /**
+         * The database has only one table at the moment
+         * you can find db schema in app/schemas
+         * it is prepopulated with data from the data.db file that
+         * you can find in the assets folder
+         * any changes made to the db will be kept in the internal storage
+         * so u need to uninstall app or delete its cache to make
+         * it prepopulate itself with data from the data.db file again
+         *
+         * to make any changes to the db structure(schema) one needs to:
+         *
+         * edit/create new entity and Dao classes
+         * make a referance in the RoomDatabase class
+         * build project to generate new schema
+         * create a new data.db file with the same schema
+         * replace it in the assets folder
+         * create new void type methodes in DBrepository and DBViewModel
+         * for deleting from and inserting to the new tables
+         */
+
+        //db reference object (you need it to make changes nad read db contents)
+        DBreference = new ViewModelProvider(this).get(DBViewModel.class);
+        // Update the cached copy of the words to the TextView
+        DBreference.getAllCompanies().observe(this, words -> {
+
+            String s="";
+            for(int i=0;i<words.size();i++)
+                 s += words.get(i).getName()+" ";
+            mImageDetails.setText(s);
+
+        });
 
     }
 
@@ -80,21 +122,36 @@ public class MainActivity extends AppCompatActivity {
 
         final FloatingActionsMenu menuMultipleActions = findViewById(R.id.multiple_actions);
 
-        com.getbase.floatingactionbutton.FloatingActionButton takePhoto = new com.getbase.floatingactionbutton.FloatingActionButton(getBaseContext());
+        FloatingActionButton takePhoto = new FloatingActionButton(getBaseContext());
         takePhoto.setColorNormal(argb(255,255,0,0));
         takePhoto.setTitle("take a photo");
         takePhoto.setOnClickListener(v -> {startCamera();menuMultipleActions.collapse();});
 
 
-        com.getbase.floatingactionbutton.FloatingActionButton loadPhoto = new com.getbase.floatingactionbutton.FloatingActionButton(getBaseContext());
+        FloatingActionButton loadPhoto = new FloatingActionButton(getBaseContext());
         loadPhoto.setColorNormal(argb(255,0,255,0));
         loadPhoto.setTitle("point app to an existing photo from the phone's storage");
         loadPhoto.setOnClickListener(v -> {startGalleryChooser(); menuMultipleActions.collapse();});
+
+        FloatingActionButton addDB = new FloatingActionButton(getBaseContext());
+        addDB.setColorNormal(argb(255,0,0,255));
+        addDB.setTitle("addDB");
+        addDB.setOnClickListener(v -> {
+
+
+            List<Companies> receipts = DBreference.getAllCompanies().getValue();
+            for(int i=0; i<receipts.size();i++)
+            {
+                if(!receipts.get(i).getId().equals("1"))
+                    DBreference.delete(receipts.get(i));
+            }
+        });
 
 
 
         menuMultipleActions.addButton(takePhoto);
         menuMultipleActions.addButton(loadPhoto);
+        menuMultipleActions.addButton(addDB);
 
     }
 

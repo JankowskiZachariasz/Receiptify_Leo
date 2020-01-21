@@ -9,6 +9,14 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments = ["room.schemaLocation":
+                                     "$projectDir/schemas".toString()]
+            }
+        }
+
     }
     buildTypes {
         release {
@@ -33,5 +41,14 @@ dependencies {
     implementation 'com.google.api-client:google-api-client-android:1.23.0' exclude module: 'httpclient'
     implementation 'com.google.http-client:google-http-client-gson:1.23.0' exclude module: 'httpclient'
     implementation 'com.google.apis:google-api-services-vision:v1-rev369-1.23.0'
+
+    // Room components
+    implementation 'androidx.room:room-runtime:2.2.3'
+    annotationProcessor 'androidx.room:room-compiler:2.2.3'
+    androidTestImplementation 'androidx.room:room-testing:2.2.3'
+    // Lifecycle components
+    implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0-rc03'
+    annotationProcessor 'androidx.lifecycle:lifecycle-compiler:2.2.0-rc03'
+
 
 }
