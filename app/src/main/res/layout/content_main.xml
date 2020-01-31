@@ -9,10 +9,11 @@
     tools:showIn="@layout/activity_main">
 
 
-
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        tools:layout_editor_absoluteX="0dp"
+        tools:layout_editor_absoluteY="76dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -24,13 +25,38 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
-                android:text="Use the floating action button to select an image."/>
+                android:text="Use the floating action button to select an image." />
 
             <ImageView
                 android:id="@+id/main_image"
                 android:layout_width="match_parent"
                 android:layout_height="200dp"
-                android:scaleType="fitCenter"/>
+                android:scaleType="fitCenter" />
+
+            <Button
+                android:id="@+id/receipts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Receipts" />
+
+            <Button
+                android:id="@+id/statistics"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Statistics" />
+
+            <Button
+                android:id="@+id/settings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Settings" />
+
+            <Button
+                android:id="@+id/products"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Products" />
+
         </LinearLayout>
     </ScrollView>
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -50,5 +50,14 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0-rc03'
     annotationProcessor 'androidx.lifecycle:lifecycle-compiler:2.2.0-rc03'
 
+    // Retrofit & OkHttp
+    implementation 'com.squareup.retrofit2:retrofit:2.5.0'
+
+    // JSON Converter
+    implementation 'com.squareup.retrofit2:converter-gson:2.5.0'
+    implementation 'com.squareup.retrofit2:converter-scalars:2.5.0'
+    //implementation 'com.appunity.retrofit2:converter-scalars:2.0.2'
+    //implementation 'com.squareup.retrofit2:converter-scalars:'
+
 
 }

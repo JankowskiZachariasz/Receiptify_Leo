@@ -1,8 +1,11 @@
 package com.receiptify;
 
 import android.Manifest;
+import android.app.Application;
+import android.app.Service;
+import android.content.ComponentName;
 import android.content.Intent;
-import android.content.ReceiverCallNotAllowedException;
+import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -26,18 +29,37 @@ import com.google.api.services.vision.v1.model.Image;
 import com.google.api.services.vision.v1.model.TextAnnotation;
 import com.getbase.floatingactionbutton.FloatingActionButton;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.receiptify.activities.Products;
+import com.receiptify.activities.ReceiptsView;
+import com.receiptify.activities.Settings;
+import com.receiptify.activities.Statistics;
 import com.receiptify.data.DBViewModel;
-import com.receiptify.data.Entities.Companies;
-import com.receiptify.data.Entities.Receipts;
+
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.FileProvider;
 import androidx.lifecycle.ViewModelProvider;
+import retrofit2.Call;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.scalars.ScalarsConverterFactory;
+import retrofit2.http.Body;
+import retrofit2.http.GET;
+import retrofit2.http.Header;
+import retrofit2.http.POST;
+import retrofit2.http.PUT;
+import retrofit2.http.Path;
 
 import android.os.Environment;
+import android.os.IBinder;
+import android.os.StrictMode;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -47,7 +69,6 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.List;
 
 import static android.graphics.Color.argb;
 
@@ -64,13 +85,16 @@ public class MainActivity extends AppCompatActivity {
     private static final int GALLERY_IMAGE_REQUEST = 1;
     public static final int CAMERA_PERMISSIONS_REQUEST = 2;
     public static final int CAMERA_IMAGE_REQUEST = 3;
+    public static DBViewModel DBreference;
 
-    private TextView mImageDetails;
+    public static TextView mImageDetails;
     private ImageView mMainImage;
 
 
+
     //private ReceiptsViewModel DBreference;
-    private DBViewModel DBreference;
+
+    private DataSyncService dataSyncService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,32 +104,27 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         createFabMenu();
+        DBreference = new DBViewModel(this.getApplication());
+        startService(new Intent(this,DataSyncService.class).setAction("initialize"));
+
+
+       {
+            StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
+                    .permitNetwork()
+                    .permitCustomSlowCalls()
+                    .permitAll()// or .detectAll() for all detectable problems
+                    .build());
+            StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
+
+                    .build());
+        }
+
 
         mImageDetails = findViewById(R.id.image_details);
         mMainImage = findViewById(R.id.main_image);
 
-        /**
-         * The database has only one table at the moment
-         * you can find db schema in app/schemas
-         * it is prepopulated with data from the data.db file that
-         * you can find in the assets folder
-         * any changes made to the db will be kept in the internal storage
-         * so u need to uninstall app or delete its cache to make
-         * it prepopulate itself with data from the data.db file again
-         *
-         * to make any changes to the db structure(schema) one needs to:
-         *
-         * edit/create new entity and Dao classes
-         * make a referance in the RoomDatabase class
-         * build project to generate new schema
-         * create a new data.db file with the same schema
-         * replace it in the assets folder
-         * create new void type methodes in DBrepository and DBViewModel
-         * for deleting from and inserting to the new tables
-         */
 
-        //db reference object (you need it to make changes nad read db contents)
-        DBreference = new ViewModelProvider(this).get(DBViewModel.class);
+
         // Update the cached copy of the words to the TextView
         DBreference.getAllCompanies().observe(this, words -> {
 
@@ -116,7 +135,55 @@ public class MainActivity extends AppCompatActivity {
 
         });
 
+        buttons();
+
+
+
     }
+
+
+
+    void buttons(){
+        {
+            Button a = findViewById(R.id.receipts);
+            a.setOnClickListener(this::goReceipts);
+        }
+        {
+            Button a = findViewById(R.id.products);
+            a.setOnClickListener(this::goProducts);
+        }
+        {
+            Button a = findViewById(R.id.settings);
+            a.setOnClickListener(this::goSettings);
+        }
+        {
+            Button a = findViewById(R.id.statistics);
+            a.setOnClickListener(this::goStatistics);
+        }
+    }
+
+    void goReceipts(View view) {
+        Intent a = new Intent(this,ReceiptsView.class);
+        startActivity(a);
+
+
+    }
+    void goStatistics(View view) {
+        Intent a = new Intent(this, Statistics.class);
+        startActivity(a);
+
+    }
+    void goSettings(View view) {
+        Intent a = new Intent(this, Settings.class);
+        startActivity(a);
+
+    }
+    void goProducts(View view) {
+        Intent a = new Intent(this, Products.class);
+        startActivity(a);
+
+    }
+
 
     void createFabMenu(){
 
@@ -139,12 +206,12 @@ public class MainActivity extends AppCompatActivity {
         addDB.setOnClickListener(v -> {
 
 
-            List<Companies> receipts = DBreference.getAllCompanies().getValue();
-            for(int i=0; i<receipts.size();i++)
-            {
-                if(!receipts.get(i).getId().equals("1"))
-                    DBreference.delete(receipts.get(i));
-            }
+
+            startService(new Intent(this,DataSyncService.class).setAction("companies"));
+
+            //login();
+
+
         });
 
 
@@ -201,10 +268,10 @@ public class MainActivity extends AppCompatActivity {
             int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         switch (requestCode) {
-            case CAMERA_PERMISSIONS_REQUEST:
-                if (PermissionUtils.permissionGranted(requestCode, CAMERA_PERMISSIONS_REQUEST, grantResults)) {
-                    startCamera();
-                }
+            case CAMERA_PERMISSIONS_REQUEST:{
+                startCamera();
+            }
+                if (PermissionUtils.permissionGranted(requestCode, CAMERA_PERMISSIONS_REQUEST, grantResults))
                 break;
             case GALLERY_PERMISSIONS_REQUEST:
                 if (PermissionUtils.permissionGranted(requestCode, GALLERY_PERMISSIONS_REQUEST, grantResults)) {
@@ -305,8 +372,6 @@ public class MainActivity extends AppCompatActivity {
 
         return annotateRequest;
     }
-
-
 
     private static class LableDetectionTask extends AsyncTask<Object, Void, String> {
         private final WeakReference<MainActivity> mActivityWeakReference;
