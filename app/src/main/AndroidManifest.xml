@@ -16,10 +16,12 @@
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         tools:ignore="GoogleAppIndexingWarning">
+
         <service
             android:name=".DataSyncService"
             android:enabled="true"
-            android:exported="true"/>
+            android:exported="true" />
+
         <activity
             android:name=".MainActivity"
             android:theme="@style/AppTheme.NoActionBar">
@@ -31,6 +33,10 @@
         </activity>
         <activity
             android:name=".activities.ReceiptsView"
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/AppTheme.NoActionBar" />
+        <activity
+            android:name=".activities.AddReceipt"
             android:parentActivityName=".MainActivity"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
